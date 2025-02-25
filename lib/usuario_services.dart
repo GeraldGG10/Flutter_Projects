@@ -1,0 +1,32 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:primera_clase/models/usuario.dart' as usuario;
+
+class Usuarioservices {
+  static const String_url ='https://us-central1-sistemapiscicola.cloudfunctions.net/usuarios';
+
+  Future<Map<String, dynamic>> registrarUsuario(usuario.Usuario usuario) async {
+    try {
+      final response = await http.post(Uri.parse(String_url),
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({
+            'nombre': usuario.nombre,
+            'email': usuario.email,
+            'telefono': usuario.telefono,
+            'password': usuario.password
+          }));
+
+          print('Código de estado: ${response.statusCode}');
+          print('Respuesta: ${response.body}');
+
+      if (response.statusCode == 201) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Error al registrar Usuario: ${response.body}');
+      }
+    } catch (e) {
+      print('Error de conexión: $e');
+      throw Exception('Error de Conexion: $e');
+    }
+  }
+}

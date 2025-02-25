@@ -1,0 +1,234 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:primera_clase/usuario_services.dart';
+import 'package:primera_clase/models/usuario.dart';
+// Removed duplicate Usuario class definition
+
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Formulario de Registro',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
+      ),
+      home: const FormularioUsuario(),
+    );
+  }
+}
+
+class FormularioUsuario extends StatefulWidget {
+  const FormularioUsuario({super.key});
+
+  @override
+  State<FormularioUsuario> createState() => _FormularioUsuarioState();
+}
+
+class _FormularioUsuarioState extends State<FormularioUsuario> {
+  final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _telefonoController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _ocultarPassword = true;
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _emailController.dispose();
+    _telefonoController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  String? _validarNombre(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'El Nombre es obligatorio';
+    }
+
+    if (value.length < 3) {
+      return 'El Nombre debe tener al menos 3 caracteres';
+    }
+    return null;
+  }
+
+  String? _validarEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'El Email es obligatorio';
+    }
+
+    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegExp.hasMatch(value)) {
+      return 'Ingrese un email válido (ejemplo@dominio.com) ';
+    }
+    return null;
+  }
+
+  String? _validarTelefono(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'El Numero de Telefono es obligatorio';
+    }
+
+    if (value.length != 10) {
+      return 'El Numero de Telefono debe tener 10 digitos';
+    }
+    return null;
+  }
+
+  String? _validarPassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'La contraseña es obligatoria';
+    }
+
+    if (value.length < 8) {
+      return 'La contraseña debe tener al menos 8 caracteres';
+    }
+
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return 'Debe incluir al menos una letra mayuscula';
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return 'Debe incluir al menos un numero';
+    }
+
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Registro de Usuario')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _nombreController,
+                decoration: const InputDecoration(
+                  labelText: "Nombre Completo",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.person),
+                  helperText: 'Minimo 3 Caracteres',
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: _validarNombre,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: "Correo Electronico",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                  helperText: 'ejemplo@dominio.com',
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: _validarEmail,
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _telefonoController,
+                decoration: const InputDecoration(
+                  labelText: "Telefono",
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.call),
+                  helperText: 'Minimo 10 Digitos',
+                ),
+                textCapitalization: TextCapitalization.words,
+                validator: _validarTelefono,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: "Contraseña",
+                  border: const OutlineInputBorder(),
+                  prefixIcon: const Icon(Icons.lock),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _ocultarPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _ocultarPassword = !_ocultarPassword;
+                      });
+                    },
+                  ),
+                  helperText:
+                      'Minimo 8 Caracteres, incluir mayusculas, numeros y caracteres especiales',
+                ),
+                obscureText: _ocultarPassword,
+                validator: _validarPassword,
+              ),
+              const SizedBox(height: 16),
+
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    if (_formKey.currentState!.validate()) {
+                      final usuario = Usuario(
+                        nombre: _nombreController.text,
+                        email: _emailController.text,
+                        telefono: _telefonoController.text,
+                        password: _passwordController.text,
+                      );
+  
+                      showDialog(
+                        context: context,
+                        builder: (context) => const Center(child: CircularProgressIndicator()),
+                      );
+  
+                      try {
+                        final resultado = await Usuarioservices().registrarUsuario(usuario);
+                        print('Registro exitoso: $resultado');
+  
+                        Navigator.pop(context);
+  
+                        _formKey.currentState?.reset();
+                        _nombreController.clear();
+                        _emailController.clear();
+                        _telefonoController.clear();
+                        _passwordController.clear();
+  
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Usuario registrado Correctamente'),
+                            backgroundColor: Colors.blue,
+                          ),
+                        );
+                      } catch (e) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.save),
+                  label: const Text('Registrar'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+  }

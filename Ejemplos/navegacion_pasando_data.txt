@@ -1,0 +1,89 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:primera_clase/models/producto_model.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Profile',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(255, 255, 251, 251),
+        ),
+      ),
+      home: const PrimeraPantalla(),
+    );
+  }
+}
+
+class PrimeraPantalla extends StatelessWidget {
+  const PrimeraPantalla({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final productos = [
+      Producto('Laptop', 'Una Laptop para Gaming'),
+      Producto('Smartphone', 'Ultimo modelo'),
+      Producto('Tablet', 'Perfecta para estudiar')
+    ];
+    return Scaffold(
+      appBar: AppBar(title: const Text('Productos')),
+      body: ListView.builder(itemCount: productos.length, itemBuilder: (context, index){
+        return Card(
+          child: ListTile(
+            title: Text(productos[index].nombre),
+            trailing: const Icon(Icons.arrow_forward),
+            onTap: (){
+              Navigator.push(context,MaterialPageRoute(builder: (context) => DetalleProducto(producto: productos[index])));
+            },
+            ),
+        );
+      })
+      );
+  }
+}
+
+
+
+class DetalleProducto extends StatelessWidget{
+  final Producto producto;
+
+  const DetalleProducto({super.key, 
+  required this.producto});
+
+  @override
+  Widget build(BuildContext context){
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(producto.nombre),
+      ),
+      body: Padding(padding: const EdgeInsets.all(16.0),
+      child: Column(
+        children: [
+          Text('Detalles del Prodcucto', style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          const SizedBox(
+            height: 20,),
+          Text('Nombre: ${producto.nombre}',
+          style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(
+            height: 20,
+            ),
+            Text('Descripcion: ${producto.descripcion}',
+            style: Theme.of(context).textTheme.bodyLarge,
+            )
+        ],
+        ),
+        ),
+    );
+  }
+
+}

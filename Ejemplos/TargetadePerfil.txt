@@ -1,0 +1,162 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Profile',
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color.fromARGB(255, 255, 251, 251),
+        ),
+      ),
+      home: const MyHomePage(),
+    );
+  }
+}
+
+class MyHomePage extends StatelessWidget {
+  const MyHomePage({super.key});
+
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Row(
+          children: [
+            Icon(Icons.person, color: Colors.white), // Ícono agregado
+            SizedBox(width: 8), // Espacio entre el ícono y el texto
+            const Text(
+              'My profile',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Color.fromARGB(255, 2, 2, 2),
+      ),
+      body: const Center(
+        child: TarjetaPerfil(),
+      ),
+    );
+  }
+}
+
+class TarjetaPerfil extends StatelessWidget {
+  const TarjetaPerfil({super.key});
+
+  Widget build(BuildContext context) {
+    Widget _buildEstadistica(String titulo, String valor, Icon icono) {
+      return Column(
+        children: [
+          icono,
+          Text(
+            valor,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
+          ),
+          Text(
+            titulo,
+            style: const TextStyle(
+              color: Colors.grey,
+            ),
+          )
+        ],
+      );
+    }
+
+    return Container(
+      width: 300,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Color.fromARGB(255, 242, 242, 245),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color.fromARGB(255, 182, 21, 21).withOpacity(0.3),
+            blurRadius: 10,
+            spreadRadius: 2,
+          )
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Foto de perfil
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color.fromARGB(255, 194, 26, 26),
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.person,
+                size: 50,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Información del perfil
+          const Text(
+            'Gerald Gomera',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Flutter Developer',
+            style: TextStyle(
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Estadísticas
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildEstadistica ('','',Icon(Icons.facebook)), // Primer ícono de persona
+              _buildEstadistica ('','',Icon(Icons.camera_alt)), // Segundo ícono de persona
+              _buildEstadistica ('','',Icon(Icons.code)),
+              _buildEstadistica ('','',Icon(Icons.email)), // Tercer ícono de persona
+            ],
+          ),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          
+            children: [
+              _buildEstadistica('Projects', '20', Icon(Icons.developer_board)),
+              _buildEstadistica('Followers', '10k', Icon(Icons.people)),
+              _buildEstadistica('Rating', '4.8', Icon(Icons.star_border)),
+            ],
+            
+              
+          )
+        ],
+      ),
+    );
+  }
+}
+
+
+
+
+
+
+
+

@@ -1,234 +1,283 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:primera_clase/usuario_services.dart';
-import 'package:primera_clase/models/usuario.dart';
-// Removed duplicate Usuario class definition
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Formulario de Registro',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
-      ),
-      home: const FormularioUsuario(),
+      debugShowCheckedModeBanner: false,
+      title: 'Conversor de Monedas',
+      theme: ThemeData.dark(),
+      home: CurrencyConverterScreen(),
     );
   }
 }
 
-class FormularioUsuario extends StatefulWidget {
-  const FormularioUsuario({super.key});
-
+class CurrencyConverterScreen extends StatefulWidget {
   @override
-  State<FormularioUsuario> createState() => _FormularioUsuarioState();
+  _CurrencyConverterScreenState createState() => _CurrencyConverterScreenState();
 }
 
-class _FormularioUsuarioState extends State<FormularioUsuario> {
-  final _formKey = GlobalKey<FormState>();
-  final _nombreController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _telefonoController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _ocultarPassword = true;
+class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
+  final TextEditingController amountController = TextEditingController();
+  String fromCurrency = 'USD';
+  String toCurrency = 'EUR';
+  double result = 0;
+  DateTime selectedDate = DateTime.now();
+  List<String> currencies = [
+    'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD',
+    'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY'
+  ];
+  List<Map<String, dynamic>> conversionHistory = [];
 
-  @override
-  void dispose() {
-    _nombreController.dispose();
-    _emailController.dispose();
-    _telefonoController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  String? _validarNombre(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'El Nombre es obligatorio';
+  Future<void> convertCurrency() async {
+    if (fromCurrency == toCurrency) {
+      setState(() {
+        result = double.tryParse(amountController.text) ?? 0;
+      });
+      return;
     }
 
-    if (value.length < 3) {
-      return 'El Nombre debe tener al menos 3 caracteres';
-    }
-    return null;
-  }
+    String date = "${selectedDate.toIso8601String().split('T')[0]}";
+    String url = 'https://api.frankfurter.app/$date?from=$fromCurrency&to=$toCurrency';
+    final response = await http.get(Uri.parse(url));
 
-  String? _validarEmail(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'El Email es obligatorio';
+    if (response.statusCode == 200) {
+      var data = json.decode(response.body);
+      double rate = data['rates'][toCurrency];
+      setState(() {
+        result = (double.tryParse(amountController.text) ?? 0) * rate;
+        // Guardar el historial de la conversión
+        conversionHistory.add({
+          'fromCurrency': fromCurrency,
+          'toCurrency': toCurrency,
+          'amount': amountController.text,
+          'result': result,
+          'rate': rate,
+          'date': date,
+        });
+      });
+    } else {
+      setState(() {
+        result = 0;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo obtener la tasa de cambio')),
+      );
     }
-
-    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-    if (!emailRegExp.hasMatch(value)) {
-      return 'Ingrese un email válido (ejemplo@dominio.com) ';
-    }
-    return null;
-  }
-
-  String? _validarTelefono(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'El Numero de Telefono es obligatorio';
-    }
-
-    if (value.length != 10) {
-      return 'El Numero de Telefono debe tener 10 digitos';
-    }
-    return null;
-  }
-
-  String? _validarPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return 'La contraseña es obligatoria';
-    }
-
-    if (value.length < 8) {
-      return 'La contraseña debe tener al menos 8 caracteres';
-    }
-
-    if (!RegExp(r'[A-Z]').hasMatch(value)) {
-      return 'Debe incluir al menos una letra mayuscula';
-    }
-
-    if (!RegExp(r'[0-9]').hasMatch(value)) {
-      return 'Debe incluir al menos un numero';
-    }
-
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registro de Usuario')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: _nombreController,
-                decoration: const InputDecoration(
-                  labelText: "Nombre Completo",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
-                  helperText: 'Minimo 3 Caracteres',
-                ),
-                textCapitalization: TextCapitalization.words,
-                validator: _validarNombre,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: "Correo Electronico",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
-                  helperText: 'ejemplo@dominio.com',
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: _validarEmail,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _telefonoController,
-                decoration: const InputDecoration(
-                  labelText: "Telefono",
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.call),
-                  helperText: 'Minimo 10 Digitos',
-                ),
-                textCapitalization: TextCapitalization.words,
-                validator: _validarTelefono,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _passwordController,
-                decoration: InputDecoration(
-                  labelText: "Contraseña",
-                  border: const OutlineInputBorder(),
-                  prefixIcon: const Icon(Icons.lock),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _ocultarPassword
-                          ? Icons.visibility
-                          : Icons.visibility_off,
+      backgroundColor: Colors.black,
+      appBar: AppBar(title: Text('Conversor de Monedas')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Moneda de Origen:', style: TextStyle(color: Colors.white)),
+                    DropdownButton<String>(
+                      dropdownColor: Colors.black,
+                      value: fromCurrency,
+                      onChanged: (value) => setState(() => fromCurrency = value!),
+                      items: currencies.map((currency) {
+                        return DropdownMenuItem(
+                          value: currency,
+                          child: Text(currency, style: TextStyle(color: Colors.white)),
+                        );
+                      }).toList(),
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _ocultarPassword = !_ocultarPassword;
-                      });
-                    },
-                  ),
-                  helperText:
-                      'Minimo 8 Caracteres, incluir mayusculas, numeros y caracteres especiales',
+                  ],
                 ),
-                obscureText: _ocultarPassword,
-                validator: _validarPassword,
-              ),
-              const SizedBox(height: 16),
-
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    if (_formKey.currentState!.validate()) {
-                      final usuario = Usuario(
-                        nombre: _nombreController.text,
-                        email: _emailController.text,
-                        telefono: _telefonoController.text,
-                        password: _passwordController.text,
-                      );
-  
-                      showDialog(
-                        context: context,
-                        builder: (context) => const Center(child: CircularProgressIndicator()),
-                      );
-  
-                      try {
-                        final resultado = await Usuarioservices().registrarUsuario(usuario);
-                        print('Registro exitoso: $resultado');
-  
-                        Navigator.pop(context);
-  
-                        _formKey.currentState?.reset();
-                        _nombreController.clear();
-                        _emailController.clear();
-                        _telefonoController.clear();
-                        _passwordController.clear();
-  
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Usuario registrado Correctamente'),
-                            backgroundColor: Colors.blue,
-                          ),
+                SizedBox(width: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Moneda de Destino:', style: TextStyle(color: Colors.white)),
+                    DropdownButton<String>(
+                      dropdownColor: Colors.black,
+                      value: toCurrency,
+                      onChanged: (value) => setState(() => toCurrency = value!),
+                      items: currencies.map((currency) {
+                        return DropdownMenuItem(
+                          value: currency,
+                          child: Text(currency, style: TextStyle(color: Colors.white)),
                         );
-                      } catch (e) {
-                        Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            backgroundColor: Colors.red,
-                          ),
+                      }).toList(),
+                    ),
+                  ],
+                ),
+                SizedBox(width: 20),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Fecha de Conversión:', style: TextStyle(color: Colors.white)),
+                    ElevatedButton(
+                      onPressed: () async {
+                        DateTime? newDate = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
                         );
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.save),
-                  label: const Text('Registrar'),
+                        if (newDate != null) {
+                          setState(() {
+                            selectedDate = newDate;
+                          });
+                        }
+                      },
+                      child: Text('${selectedDate.toLocal()}'.split(' ')[0]),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
+            SizedBox(height: 20),
+            TextField(
+              controller: amountController,
+              keyboardType: TextInputType.number,
+              style: TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'Cantidad',
+                labelStyle: TextStyle(color: Colors.white),
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.white),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.blue),
+                ),
+              ),
+            ),
+            SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ElevatedButton(
+                onPressed: convertCurrency,
+                child: Text('Convertir'),
+              ),
+            ),
+            SizedBox(height: 20),
+            Center(
+              child: Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white12,
+                  border: Border.all(color: Colors.blue),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('$result $toCurrency', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
+                    SizedBox(width: 10),
+                    Image.network(
+                      'https://flagcdn.com/w40/${toCurrency.substring(0, 2).toLowerCase()}.png',
+                      width: 40,
+                      height: 30,
+                      errorBuilder: (context, error, stackTrace) => Icon(Icons.flag, color: Colors.white),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
-      );
-    }
+      ),
+      // Botón de historial en la esquina inferior derecha
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HistoryScreen(conversionHistory: conversionHistory)),
+          );
+        },
+        backgroundColor: Colors.blue,
+        child: Icon(Icons.history),
+      ),
+    );
   }
+}
+
+class HistoryScreen extends StatefulWidget {
+  final List<Map<String, dynamic>> conversionHistory;
+
+  HistoryScreen({required this.conversionHistory});
+
+  @override
+  _HistoryScreenState createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends State<HistoryScreen> {
+  String selectedBaseCurrency = 'USD'; // La moneda base seleccionada
+  List<Map<String, dynamic>> filteredHistory = [];
+
+  @override
+  void initState() {
+    super.initState();
+    filterHistory();
+  }
+
+  // Filtra el historial según la moneda base seleccionada
+  void filterHistory() {
+    setState(() {
+      filteredHistory = widget.conversionHistory
+          .where((entry) => entry['fromCurrency'] == selectedBaseCurrency)
+          .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Historial de Conversiones')),
+      body: Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            // Dropdown para seleccionar la moneda base
+            DropdownButton<String>(
+              value: selectedBaseCurrency,
+              onChanged: (newBaseCurrency) {
+                setState(() {
+                  selectedBaseCurrency = newBaseCurrency!;
+                  filterHistory(); // Filtra el historial según la moneda base seleccionada
+                });
+              },
+              items: ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD']
+                  .map((currency) {
+                return DropdownMenuItem(
+                  value: currency,
+                  child: Text(currency),
+                );
+              }).toList(),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: filteredHistory.length,
+                itemBuilder: (context, index) {
+                  var entry = filteredHistory[index];
+                  return ListTile(
+                    title: Text('${entry['amount']} ${entry['fromCurrency']} → ${entry['result']} ${entry['toCurrency']}'),
+                    subtitle: Text('Tasa: ${entry['rate']} | Fecha: ${entry['date']}'),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

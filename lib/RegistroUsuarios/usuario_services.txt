@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:primera_clase/models/usuario.dart' as usuario;
+import 'package:primera_clase/RegistroUsuarios/models/usuario.txt' as usuario;
 
 class Usuarioservices {
   static const String_url ='https://us-central1-sistemapiscicola.cloudfunctions.net/usuarios';

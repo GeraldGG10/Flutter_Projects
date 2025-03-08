@@ -1,281 +1,365 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:provider/provider.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
+}
+
+// Modelo de tarea
+class Task {
+  String title;
+  bool isCompleted;
+
+  Task(this.title, {this.isCompleted = false});
+}
+
+// Provider para manejar el estado
+class TaskProvider with ChangeNotifier {
+  final List<Task> _tasks = [];
+  double _fontSize = 16.0;
+  Color _textColor = Colors.white;
+  Color _backgroundColor = Colors.black;
+  Color _appBarColor = Colors.blueAccent; // Color de la AppBar
+  Color _menuColor = Colors.black87; // Color del menú desplegable
+
+  List<Task> get tasks => _tasks;
+  int get totalTasks => _tasks.length;
+  int get completedTasks => _tasks.where((task) => task.isCompleted).length;
+  double get progress =>
+      totalTasks == 0 ? 0 : (completedTasks / totalTasks) * 100;
+  double get fontSize => _fontSize;
+  Color get textColor => _textColor;
+  Color get backgroundColor => _backgroundColor;
+  Color get appBarColor => _appBarColor;
+  Color get menuColor => _menuColor;
+
+  void addTask(String title) {
+    _tasks.add(Task(title));
+    notifyListeners();
+  }
+
+  void toggleTask(int index) {
+    _tasks[index].isCompleted = !_tasks[index].isCompleted;
+    notifyListeners();
+  }
+
+  void removeTask(int index) {
+    _tasks.removeAt(index);
+    notifyListeners();
+  }
+
+  void setFontSize(double size) {
+    _fontSize = size;
+    notifyListeners();
+  }
+
+  void setTextColor(Color color) {
+    _textColor = color;
+    notifyListeners();
+  }
+
+  void setBackgroundColor(Color color) {
+    _backgroundColor = color;
+    notifyListeners();
+  }
+
+  void setAppBarColor(Color color) {
+    _appBarColor = color;
+    notifyListeners();
+  }
+
+  void setMenuColor(Color color) {
+    _menuColor = color;
+    notifyListeners();
+  }
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Conversor de Monedas',
-      theme: ThemeData.dark(),
-      home: CurrencyConverterScreen(),
+    return ChangeNotifierProvider(
+      create: (context) => TaskProvider(),
+      child: Consumer<TaskProvider>(
+        builder: (context, taskProvider, child) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData.dark().copyWith(
+              scaffoldBackgroundColor: taskProvider.backgroundColor,
+            ),
+            home: const TaskScreen(),
+          );
+        },
+      ),
     );
   }
 }
 
-class CurrencyConverterScreen extends StatefulWidget {
+class TaskScreen extends StatefulWidget {
+  const TaskScreen({super.key});
+
   @override
-  _CurrencyConverterScreenState createState() => _CurrencyConverterScreenState();
+  _TaskScreenState createState() => _TaskScreenState();
 }
 
-class _CurrencyConverterScreenState extends State<CurrencyConverterScreen> {
-  final TextEditingController amountController = TextEditingController();
-  String fromCurrency = 'USD';
-  String toCurrency = 'EUR';
-  double result = 0;
-  DateTime selectedDate = DateTime.now();
-  List<String> currencies = [
-    'USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD',
-    'MXN', 'SGD', 'HKD', 'NOK', 'KRW', 'TRY'
-  ];
-  List<Map<String, dynamic>> conversionHistory = [];
-
-  Future<void> convertCurrency() async {
-    if (fromCurrency == toCurrency) {
-      setState(() {
-        result = double.tryParse(amountController.text) ?? 0;
-      });
-      return;
-    }
-
-    String date = "${selectedDate.toIso8601String().split('T')[0]}";
-    String url = 'https://api.frankfurter.app/$date?from=$fromCurrency&to=$toCurrency';
-    final response = await http.get(Uri.parse(url));
-
-    if (response.statusCode == 200) {
-      var data = json.decode(response.body);
-      double rate = data['rates'][toCurrency];
-      setState(() {
-        result = (double.tryParse(amountController.text) ?? 0) * rate;
-        // Guardar el historial de la conversión
-        conversionHistory.add({
-          'fromCurrency': fromCurrency,
-          'toCurrency': toCurrency,
-          'amount': amountController.text,
-          'result': result,
-          'rate': rate,
-          'date': date,
-        });
-      });
-    } else {
-      setState(() {
-        result = 0;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo obtener la tasa de cambio')),
-      );
-    }
-  }
+class _TaskScreenState extends State<TaskScreen> {
+  bool _isMenuOpen = false;
 
   @override
   Widget build(BuildContext context) {
+    final taskProvider = Provider.of<TaskProvider>(context);
+    final TextEditingController taskController = TextEditingController();
+
     return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(title: Text('Conversor de Monedas')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      appBar: AppBar(
+        title: const Text('Lista de Tareas'),
+        backgroundColor: taskProvider.appBarColor, // Fondo de la AppBar
+        leading: IconButton(
+          icon: const Icon(Icons.menu),
+          onPressed: () {
+            setState(() {
+              _isMenuOpen = !_isMenuOpen;
+            });
+          },
+        ),
+      ),
+      body: Stack(
+        children: [
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 300),
+            left: _isMenuOpen ? MediaQuery.of(context).size.width * 0.2 : 0,
+            top: 0,
+            right: 0,
+            bottom: 0,
+            child: Column(
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Moneda de Origen:', style: TextStyle(color: Colors.white)),
-                    DropdownButton<String>(
-                      dropdownColor: Colors.black,
-                      value: fromCurrency,
-                      onChanged: (value) => setState(() => fromCurrency = value!),
-                      items: currencies.map((currency) {
-                        return DropdownMenuItem(
-                          value: currency,
-                          child: Text(currency, style: TextStyle(color: Colors.white)),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                // Input para agregar tareas
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: taskController,
+                          style: TextStyle(
+                              color: taskProvider.textColor,
+                              fontSize: taskProvider.fontSize),
+                          decoration: const InputDecoration(
+                            hintText: 'Nueva tarea...',
+                            hintStyle: TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                        ),
+                        onPressed: () {
+                          if (taskController.text.isNotEmpty) {
+                            taskProvider.addTask(taskController.text);
+                            taskController.clear();
+                          }
+                        },
+                        child: const Icon(Icons.add, color: Colors.white),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(width: 20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Moneda de Destino:', style: TextStyle(color: Colors.white)),
-                    DropdownButton<String>(
-                      dropdownColor: Colors.black,
-                      value: toCurrency,
-                      onChanged: (value) => setState(() => toCurrency = value!),
-                      items: currencies.map((currency) {
-                        return DropdownMenuItem(
-                          value: currency,
-                          child: Text(currency, style: TextStyle(color: Colors.white)),
-                        );
-                      }).toList(),
-                    ),
-                  ],
+                // Lista de tareas
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: taskProvider.tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = taskProvider.tasks[index];
+                      return Card(
+                        color: Colors.black54,
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 4),
+                        child: ListTile(
+                          leading: Checkbox(
+                            value: task.isCompleted,
+                            activeColor: Colors.blueAccent,
+                            onChanged: (_) => taskProvider.toggleTask(index),
+                          ),
+                          title: Text(
+                            task.title,
+                            style: TextStyle(
+                              color: taskProvider.textColor,
+                              fontSize: taskProvider.fontSize,
+                              decoration: task.isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            ),
+                          ),
+                          trailing: IconButton(
+                            icon:
+                                const Icon(Icons.delete, color: Colors.redAccent),
+                            onPressed: () => taskProvider.removeTask(index),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                SizedBox(width: 20),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Fecha de Conversión:', style: TextStyle(color: Colors.white)),
-                    ElevatedButton(
-                      onPressed: () async {
-                        DateTime? newDate = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDate,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                        );
-                        if (newDate != null) {
-                          setState(() {
-                            selectedDate = newDate;
-                          });
-                        }
-                      },
-                      child: Text('${selectedDate.toLocal()}'.split(' ')[0]),
-                    ),
-                  ],
+                // Sección de estadísticas (ahora transparente)
+                Container(
+                  padding: const EdgeInsets.all(16.0),
+                  color: Colors.transparent, // Ahora es transparente
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Total: ${taskProvider.totalTasks}',
+                        style: TextStyle(
+                            color: taskProvider.textColor, fontSize: 16),
+                      ),
+                      Text(
+                        'Completadas: ${taskProvider.completedTasks}',
+                        style: TextStyle(
+                            color: taskProvider.textColor, fontSize: 16),
+                      ),
+                      Text(
+                        'Progreso: ${taskProvider.progress.toStringAsFixed(1)}%',
+                        style: const TextStyle(
+                            color: Colors.blueAccent,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
-            SizedBox(height: 20),
-            TextField(
-              controller: amountController,
-              keyboardType: TextInputType.number,
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Cantidad',
-                labelStyle: TextStyle(color: Colors.white),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.white),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.blue),
-                ),
-              ),
-            ),
-            SizedBox(height: 10),
+          ),
+          // Menú lateral
+          if (_isMenuOpen)
             Align(
               alignment: Alignment.centerLeft,
-              child: ElevatedButton(
-                onPressed: convertCurrency,
-                child: Text('Convertir'),
-              ),
-            ),
-            SizedBox(height: 20),
-            Center(
               child: Container(
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white12,
-                  border: Border.all(color: Colors.blue),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                width: MediaQuery.of(context).size.width * 0.2,
+                height: double.infinity,
+                color: taskProvider.menuColor, // Color del menú
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text('$result $toCurrency', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                    SizedBox(width: 10),
-                    Image.network(
-                      'https://flagcdn.com/w40/${toCurrency.substring(0, 2).toLowerCase()}.png',
-                      width: 40,
-                      height: 30,
-                      errorBuilder: (context, error, stackTrace) => Icon(Icons.flag, color: Colors.white),
+                    const SizedBox(height: 20),
+                    const Text('Tamaño de Fuente', style: TextStyle(color: Colors.white)),
+                    Slider(
+                      value: taskProvider.fontSize,
+                      min: 10,
+                      max: 30,
+                      onChanged: (value) => taskProvider.setFontSize(value),
+                    ),
+                    const Divider(color: Colors.white54),
+                    const Text('Color de Texto', style: TextStyle(color: Colors.white)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.red, taskProvider.setTextColor),
+                        _colorOption(Colors.white, taskProvider.setTextColor),
+                        _colorOption(Colors.black, taskProvider.setTextColor),
+                        _colorOption(Colors.blue, taskProvider.setTextColor),
+                        _colorOption(Colors.green, taskProvider.setTextColor),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.purple, taskProvider.setTextColor),
+                        _colorOption(Colors.orange, taskProvider.setTextColor),
+                        _colorOption(Colors.grey, taskProvider.setTextColor),
+                        _colorOption(Colors.brown, taskProvider.setTextColor),
+                        _colorOption(Colors.yellow, taskProvider.setTextColor),
+                      ],
+                    ),
+                    const Divider(color: Colors.white54),
+                    const Text('Color de Fondo', style: TextStyle(color: Colors.white)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.red, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.white, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.black, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.blue, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.green, taskProvider.setBackgroundColor),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.purple, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.orange, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.grey, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.brown, taskProvider.setBackgroundColor),
+                        _colorOption(Colors.yellow, taskProvider.setBackgroundColor),
+                      ],
+                    ),
+                    const Divider(color: Colors.white54),
+                    const Text('Color de la Barra', style: TextStyle(color: Colors.white)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.blueAccent, taskProvider.setAppBarColor),
+                        _colorOption(Colors.green, taskProvider.setAppBarColor),
+                        _colorOption(Colors.purple, taskProvider.setAppBarColor),
+                        _colorOption(Colors.orange, taskProvider.setAppBarColor),
+                        _colorOption(Colors.red, taskProvider.setAppBarColor),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.black, taskProvider.setAppBarColor),
+                        _colorOption(Colors.grey, taskProvider.setAppBarColor),
+                        _colorOption(Colors.blue, taskProvider.setAppBarColor),
+                        _colorOption(Colors.brown, taskProvider.setAppBarColor),
+                        _colorOption(Colors.yellow, taskProvider.setAppBarColor),
+                      ],
+                    ),
+                    const Divider(color: Colors.white54),
+                    const Text('Color del Menú', style: TextStyle(color: Colors.white)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.black87, taskProvider.setMenuColor),
+                        _colorOption(Colors.grey, taskProvider.setMenuColor),
+                        _colorOption(Colors.blueGrey, taskProvider.setMenuColor),
+                        _colorOption(Colors.redAccent, taskProvider.setMenuColor),
+                        _colorOption(Colors.green, taskProvider.setMenuColor),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        _colorOption(Colors.purple, taskProvider.setMenuColor),
+                        _colorOption(Colors.orange, taskProvider.setMenuColor),
+                        _colorOption(Colors.brown, taskProvider.setMenuColor),
+                        _colorOption(Colors.blue, taskProvider.setMenuColor),
+                        _colorOption(Colors.yellow, taskProvider.setMenuColor),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-      // Botón de historial en la esquina inferior derecha
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => HistoryScreen(conversionHistory: conversionHistory)),
-          );
-        },
-        backgroundColor: Colors.blue,
-        child: Icon(Icons.history),
+        ],
       ),
     );
   }
-}
 
-class HistoryScreen extends StatefulWidget {
-  final List<Map<String, dynamic>> conversionHistory;
-
-  HistoryScreen({required this.conversionHistory});
-
-  @override
-  _HistoryScreenState createState() => _HistoryScreenState();
-}
-
-class _HistoryScreenState extends State<HistoryScreen> {
-  String selectedBaseCurrency = 'USD'; // La moneda base seleccionada
-  List<Map<String, dynamic>> filteredHistory = [];
-
-  @override
-  void initState() {
-    super.initState();
-    filterHistory();
-  }
-
-  // Filtra el historial según la moneda base seleccionada
-  void filterHistory() {
-    setState(() {
-      filteredHistory = widget.conversionHistory
-          .where((entry) => entry['fromCurrency'] == selectedBaseCurrency)
-          .toList();
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Historial de Conversiones')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Dropdown para seleccionar la moneda base
-            DropdownButton<String>(
-              value: selectedBaseCurrency,
-              onChanged: (newBaseCurrency) {
-                setState(() {
-                  selectedBaseCurrency = newBaseCurrency!;
-                  filterHistory(); // Filtra el historial según la moneda base seleccionada
-                });
-              },
-              items: ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY', 'SEK', 'NZD']
-                  .map((currency) {
-                return DropdownMenuItem(
-                  value: currency,
-                  child: Text(currency),
-                );
-              }).toList(),
-            ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: filteredHistory.length,
-                itemBuilder: (context, index) {
-                  var entry = filteredHistory[index];
-                  return ListTile(
-                    title: Text('${entry['amount']} ${entry['fromCurrency']} → ${entry['result']} ${entry['toCurrency']}'),
-                    subtitle: Text('Tasa: ${entry['rate']} | Fecha: ${entry['date']}'),
-                  );
-                },
-              ),
-            ),
-          ],
+  Widget _colorOption(Color color, Function(Color) onSelect) {
+    return GestureDetector(
+      onTap: () => onSelect(color),
+      child: Container(
+        margin: const EdgeInsets.all(5),
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
         ),
       ),
     );
